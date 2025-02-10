@@ -1,0 +1,103 @@
+name: release
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  check-release:
+    runs-on: ubuntu-latest
+    outputs:
+      latest_release: ${{ steps.check_release.outputs.latest_release }}
+      create_release: ${{ steps.check_release.outputs.create_release }}
+    steps:
+      - name: Check if a new release is available
+        id: check_release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          
+          # 获取最新 alist 版本
+          LATEST_RELEASE=$(gh release view --repo AlistGo/alist --json tagName -q '.tagName')
+          echo "Latest release: $LATEST_RELEASE"
+          echo "latest_release=$LATEST_RELEASE" >> "$GITHUB_OUTPUT"
+
+          # 获取当前 alist 版本
+          CURRENT_RELEASE=$(gh release view --repo arrio464/alist-builder --json tagName -q '.tagName' || echo "none")
+          echo "Current release: $CURRENT_RELEASE"
+
+          if [ "$LATEST_RELEASE" != "$CURRENT_RELEASE" ]; then
+            echo "create_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "create_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  create-release:
+    needs: check-release
+    runs-on: ubuntu-latest
+    if: needs.check-release.outputs.create_release == 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Apply patch
+        env:
+          VERSION: ${{ needs.check-release.outputs.latest_release }}
+        run: |
+          set -e
+          VERSION_FRONTEND=${VERSION#v}  # 移除 "v" 前缀
+          WORKDIR=/tmp/alist-$VERSION
+          
+          # 下载 alist 源码
+          mkdir -p "$WORKDIR"
+          cd "$WORKDIR"
+          wget -q https://github.com/AlistGo/alist/archive/refs/tags/$VERSION.tar.gz
+          tar -xf $VERSION.tar.gz --strip-components=1
+
+          # 应用补丁
+          PATCH_DIR="$GITHUB_WORKSPACE/patches"
+          if [ -d "$PATCH_DIR" ] && [ "$(ls -A "$PATCH_DIR")" ]; then
+            for p in "$PATCH_DIR"/*.patch; do
+              patch -p1 < "$p"
+            done
+          fi
+
+          # 下载 Web 资源
+          cd public
+          wget -q https://github.com/AlistGo/alist-web/releases/download/$VERSION_FRONTEND/dist.tar.gz
+          tar -xf dist.tar.gz
+
+          # 应用前端补丁
+          cd dist
+          bash "$GITHUB_WORKSPACE/patch_frontend.sh"
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Build release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.check-release.outputs.latest_release }}
+        run: |
+          set -e
+          cd /tmp/alist-$VERSION
+
+          # 执行构建
+          bash "$GITHUB_WORKSPACE/build.sh" "$VERSION"
+
+          # 创建 Release
+          gh release create "$VERSION" \
+            alist-windows-amd64.exe \
+            alist-linux-amd64 \
+            alist-linux-arm64 \
+            alist-linux-armv7 \
+            --repo arrio464/alist-builder \
+            --title "alist $VERSION" \
+            --notes "Automated release for version $VERSION"

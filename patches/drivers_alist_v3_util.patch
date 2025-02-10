@@ -1,0 +1,12 @@
+diff --git a/drivers/alist_v3/util.go b/drivers/alist_v3/util.go
+index 5ede285..a883263 100644
+--- a/drivers/alist_v3/util.go
++++ b/drivers/alist_v3/util.go
+@@ -35,6 +35,7 @@ func (d *AListV3) request(api, method string, callback base.ReqCallback, retry .
+ 	url := d.Address + "/api" + api
+ 	req := base.RestyClient.R()
+ 	req.SetHeader("Authorization", d.Token)
++	req.SetHeader("X-Token", d.Token)
+ 	if callback != nil {
+ 		callback(req)
+ 	}
