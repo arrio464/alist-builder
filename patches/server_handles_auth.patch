@@ -1,0 +1,14 @@
+diff --git a/server/handles/auth.go b/server/handles/auth.go
+index e1f512c..770a182 100644
+--- a/server/handles/auth.go
++++ b/server/handles/auth.go
+@@ -183,7 +183,8 @@ func Verify2FA(c *gin.Context) {
+ }
+ 
+ func LogOut(c *gin.Context) {
+-	err := common.InvalidateToken(c.GetHeader("Authorization"))
++	token := common.GetToken(c)
++	err := common.InvalidateToken(token)
+ 	if err != nil {
+ 		common.ErrorResp(c, err, 500)
+ 	} else {

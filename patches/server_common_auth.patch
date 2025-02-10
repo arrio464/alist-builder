@@ -1,0 +1,26 @@
+diff --git a/server/common/auth.go b/server/common/auth.go
+index 0de718c..96e3205 100644
+--- a/server/common/auth.go
++++ b/server/common/auth.go
+@@ -7,6 +7,7 @@ import (
+ 	"github.com/alist-org/alist/v3/internal/conf"
+ 	"github.com/alist-org/alist/v3/internal/model"
+ 	"github.com/golang-jwt/jwt/v4"
++	"github.com/gin-gonic/gin"
+ 	"github.com/pkg/errors"
+ )
+ 
+@@ -64,6 +65,13 @@ func ParseToken(tokenString string) (*UserClaims, error) {
+ 	return nil, errors.New("couldn't handle this token")
+ }
+ 
++func GetToken(c *gin.Context) string {
++    if token := c.GetHeader("X-Token"); token != "" {
++        return token
++    }
++    return c.GetHeader("Authorization")
++}
++
+ func InvalidateToken(tokenString string) error {
+ 	if tokenString == "" {
+ 		return nil // don't invalidate empty guest token
