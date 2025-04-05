@@ -2,11 +2,11 @@ diff --git a/drivers/alist_v3/driver.go b/drivers/alist_v3/driver.go
 index 894bac6..966cb57 100644
 --- a/drivers/alist_v3/driver.go
 +++ b/drivers/alist_v3/driver.go
-@@ -187,6 +187,7 @@ func (d *AListV3) Put(ctx context.Context, dstDir model.Obj, stream model.FileSt
+@@ -193,6 +193,7 @@ func (d *AListV3) Put(ctx context.Context, dstDir model.Obj, s model.FileStreame
  		return err
  	}
  	req.Header.Set("Authorization", d.Token)
 +	req.Header.Set("X-Token", d.Token)
- 	req.Header.Set("File-Path", path.Join(dstDir.GetPath(), stream.GetName()))
+ 	req.Header.Set("File-Path", path.Join(dstDir.GetPath(), s.GetName()))
  	req.Header.Set("Password", d.MetaPassword)
- 	if md5 := stream.GetHash().GetHash(utils.MD5); len(md5) > 0 {
+ 	if md5 := s.GetHash().GetHash(utils.MD5); len(md5) > 0 {
